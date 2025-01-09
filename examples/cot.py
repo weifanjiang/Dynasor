@@ -144,5 +144,6 @@ def test_cot_gsm8k(
 
 if __name__ == "__main__":
     # test_one_cot_gsm8k()
-    test_cot_gsm8k(is_parallel=False)
+    # test_cot_gsm8k(is_parallel=False)
+    test_cot_gsm8k(is_parallel=True)
 
