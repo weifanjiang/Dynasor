@@ -1,6 +1,6 @@
 from collections import Counter
 from openai import OpenAI
-from gsm8k_utils import extract_answer, math_equal, majority_voting
+from gsm8k_utils import extract_answer, math_equal, majority_voting, load_jsonl
 
 # Initialize OpenAI client with vLLM's API server
 openai_api_key = "EMPTY"
@@ -86,5 +86,85 @@ def test_one_sc_gsm8k():
     print(f"Final answer: {final_answer}")
     return final_answer
 
+
+def load_gsm8k_questions():
+    return load_jsonl("data/GSM8K/test.jsonl")
+
+
+def sc_gsm8k_process_item(item, model_name, n_samples, sampling_params):
+    question = item["question"]
+    _answer = item["answer"]
+    answer = extract_answer(_answer)
+    messages = prepare_prompt(question)
+    
+    responses = get_self_consistent_response(
+        model=model_name,
+        messages=messages,
+        n_samples=3,
+        sampling_params=sampling_params,
+    )
+    answers = [extract_answer(r) for r in responses]
+    final_answer = majority_voting(answers)
+    print(f"Final answer: {final_answer}")
+    print(f"Answer: {answer}")
+    return dict(
+        is_equal=math_equal(final_answer, answer),
+        ground_truth_answer=answer,
+        final_answer=final_answer,
+    )
+
+from concurrent.futures import ThreadPoolExecutor
+
+def test_sc_gsm8k(
+    is_parallel: bool = False,
+    n_samples: int = 3,
+    n_dataset_rows: int = 5,
+):
+    # TODO(GindaChen) Make this multithreading
+    gsm8k_test_dataset = load_gsm8k_questions()
+    gsm8k_test_dataset = gsm8k_test_dataset[:n_dataset_rows]
+
+    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
+    sampling_params = dict(
+        temperature=0.7,  # Enable some variability in responses
+        max_tokens=512,
+    )
+    
+    if is_parallel:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = []
+            # TODO(GindaChen) Make this using `map`?
+            for item in gsm8k_test_dataset:
+                future = executor.submit(
+                    sc_gsm8k_process_item,
+                    item,
+                    model_name,
+                    n_samples,
+                    sampling_params,
+                )
+                futures.append(future)
+            results = [f.result() for f in futures]
+    else:
+        results = [sc_gsm8k_process_item(
+            item,
+            model_name,
+            n_samples,
+            sampling_params,
+        ) for item in gsm8k_test_dataset]
+
+    correct_count = 0
+    for result in results:
+        if result["is_equal"]:
+            correct_count += 1
+    
+    accuracy = correct_count / len(gsm8k_test_dataset)
+    print(f"Accuracy: {correct_count} / {len(gsm8k_test_dataset)} = {accuracy * 100:.2f}%")
+    return dict(
+        accuracy=accuracy,
+        results=results,
+    )
+
+
 if __name__ == "__main__":
-    test_one_sc_gsm8k()
+    test_sc_gsm8k(is_parallel=True)
+    # test_sc_gsm8k(is_parallel=False)
