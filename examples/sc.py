@@ -17,7 +17,7 @@ def get_self_consistent_response(model: str, messages: list, n_samples: int = 3,
 
     Parameters:
     - model (str): The model name.
-    - prompt (str): The input question or prompt.
+    - messages (list): The input messages.
     - n_samples (int): The number of completions to generate.
 
     Returns:
