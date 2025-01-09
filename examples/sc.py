@@ -105,8 +105,8 @@ def sc_gsm8k_process_item(item, model_name, n_samples, sampling_params):
     )
     answers = [extract_answer(r) for r in responses]
     final_answer = majority_voting(answers)
-    print(f"Final answer: {final_answer}")
-    print(f"Answer: {answer}")
+    # print(f"Final answer: {final_answer}")
+    # print(f"Answer: {answer}")
     return dict(
         is_equal=math_equal(final_answer, answer),
         ground_truth_answer=answer,

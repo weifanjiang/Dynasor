@@ -11,6 +11,7 @@ client = OpenAI(
     base_url=openai_api_base,
 )
 
+# TODO(GindaChen) Add logprob and use certaindex to control stopping
 def get_cot_response(model: str, messages: list, sampling_params: dict = None):
     """
     Generate a single chain-of-thought completion for a prompt.
