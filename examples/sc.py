@@ -1,6 +1,7 @@
 from collections import Counter
 from openai import OpenAI
 from gsm8k_utils import extract_answer, math_equal, majority_voting, load_jsonl
+from concurrent.futures import ThreadPoolExecutor
 
 # Initialize OpenAI client with vLLM's API server
 openai_api_key = "EMPTY"
@@ -44,7 +45,11 @@ def get_self_consistent_response(model: str, messages: list, n_samples: int = 3,
     return responses
 
 
-def prepare_prompt(question: str) -> str:
+
+def load_gsm8k_questions():
+    return load_jsonl("data/GSM8K/test.jsonl")
+
+def prepare_prompt_gsm8k(question: str) -> str:
     """
     Prepare the prompt for the model with system and user messages.
     
@@ -67,7 +72,7 @@ def prepare_prompt(question: str) -> str:
 def test_one_sc_gsm8k():
     model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
     question = "Janet’s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?"
-    messages = prepare_prompt(question)
+    messages = prepare_prompt_gsm8k(question)
     sampling_params = dict(
         temperature=0.7,  # Enable some variability in responses
         max_tokens=512,
@@ -86,16 +91,11 @@ def test_one_sc_gsm8k():
     print(f"Final answer: {final_answer}")
     return final_answer
 
-
-def load_gsm8k_questions():
-    return load_jsonl("data/GSM8K/test.jsonl")
-
-
 def sc_gsm8k_process_item(item, model_name, n_samples, sampling_params):
     question = item["question"]
     _answer = item["answer"]
     answer = extract_answer(_answer)
-    messages = prepare_prompt(question)
+    messages = prepare_prompt_gsm8k(question)
     
     responses = get_self_consistent_response(
         model=model_name,
@@ -112,8 +112,6 @@ def sc_gsm8k_process_item(item, model_name, n_samples, sampling_params):
         ground_truth_answer=answer,
         final_answer=final_answer,
     )
-
-from concurrent.futures import ThreadPoolExecutor
 
 def test_sc_gsm8k(
     is_parallel: bool = False,
@@ -167,4 +165,3 @@ def test_sc_gsm8k(
 
 if __name__ == "__main__":
     test_sc_gsm8k(is_parallel=True)
-    # test_sc_gsm8k(is_parallel=False)
