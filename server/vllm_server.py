@@ -63,11 +63,20 @@ def init_logging():
 logger = init_logging()
 
 
+def has_value(x) -> bool:
+    if x is None:
+        return False
+    if isinstance(x, str):
+        return len(x.strip()) > 0
+    if isinstance(x, list):
+        return len(x) > 0
+    return True
+
 def should_early_exit(
-        answers: list[str],
-        probe_response_text: str,
-        uncertain_words: list[str],
-        continue_certain_bar: int,
+    answers: list[str],
+    probe_response_text: str,
+    uncertain_words: list[str],
+    continue_certain_bar: int,
 ) -> bool:
     """
     Check if the answer is consistent or certain.
@@ -86,7 +95,9 @@ def should_early_exit(
         return False
 
     # The answers should be consistent - may need to use some small model to verify this.
-    if not eqaul_group(answers):
+
+    answers = [i for i in answers if has_value(i)]
+    if not eqaul_group(answers[-continue_certain_bar:]):
         return False
 
     return True
