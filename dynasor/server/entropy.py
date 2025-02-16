@@ -2,7 +2,7 @@ import math
 from collections import defaultdict
 from typing import List
 
-from evaluator import math_equal
+from dynasor.server.evaluator import math_equal
 
 
 def entropy(Plist):
