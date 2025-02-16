@@ -8,17 +8,12 @@ Install vLLM
 pip install vllm
 ```
 
-Serve vLLM
+Serve Dynasor via vLLM
 ```bash
-vllm serve meta-llama/Meta-Llama-3-8B-Instruct --port 30000
+python -m dynasor.server.vllm_server --model deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B 
 ```
 
 Run examples for self-consistency and CoT
 ```bash
-# Simple implementation
-python examples/sc.py
-python examples/cot.py
-
-# Modular implementation
-python examples/sc_mod.py
+python examples/cot_client.py
 ```
