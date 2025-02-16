@@ -1,8 +1,8 @@
 import math
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import List
-import numpy as np
-from evaluator import extract_answer, strip_string, math_equal, extract_first_boxed_answer
+
+from evaluator import math_equal
 
 
 def entropy(Plist):

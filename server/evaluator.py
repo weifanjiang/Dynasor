@@ -21,6 +21,7 @@ from sympy.parsing.sympy_parser import parse_expr
 from sympy.parsing.latex import parse_latex
 from latex2sympy2 import latex2sympy
 
+
 def _fix_fracs(string):
     substrs = string.split("\\frac")
     new_str = substrs[0]
@@ -221,6 +222,7 @@ unit_texts = [
 
 unit_texts.extend([t + "s" for t in unit_texts])
 
+
 def strip_string(string, skip_unit=False):
     string = str(string).strip()
     # linebreaks
@@ -302,15 +304,15 @@ def strip_string(string, skip_unit=False):
     # cdot
     # string = string.replace("\\cdot", "")
     if (
-        string.startswith("{")
-        and string.endswith("}")
-        and string.isalnum()
-        or string.startswith("(")
-        and string.endswith(")")
-        and string.isalnum()
-        or string.startswith("[")
-        and string.endswith("]")
-        and string.isalnum()
+            string.startswith("{")
+            and string.endswith("}")
+            and string.isalnum()
+            or string.startswith("(")
+            and string.endswith(")")
+            and string.isalnum()
+            or string.startswith("[")
+            and string.endswith("]")
+            and string.isalnum()
     ):
         string = string[1:-1]
 
@@ -360,6 +362,7 @@ def strip_string(string, skip_unit=False):
     string = _fix_a_slash_b(string)
 
     return string
+
 
 def extract_answer(pred_str, data_name, use_last_number=True):
     pred_str = pred_str.replace("\u043a\u0438", "")
@@ -462,7 +465,6 @@ def extract_first_boxed_answer(pred_str, data_name):
     return pred
 
 
-
 def extract_boxed_answer(pred_str, data_name):
     pred_str = pred_str.replace("\u043a\u0438", "")
 
@@ -502,9 +504,6 @@ def extract_boxed_answer(pred_str, data_name):
         pred = pred[:-1]
     pred = strip_string(pred, skip_unit=data_name in ["carp_en", "minerva_math"])
     return pred
-
-
-
 
 
 # from .parser import choice_answer_clean, strip_string
@@ -560,11 +559,11 @@ def str_to_pmatrix(input_str):
 
 
 def math_equal(
-    prediction: Union[bool, float, str],
-    reference: Union[float, str],
-    include_percentage: bool = True,
-    is_close: bool = True,
-    timeout: bool = False,
+        prediction: Union[bool, float, str],
+        reference: Union[float, str],
+        include_percentage: bool = True,
+        is_close: bool = True,
+        timeout: bool = False,
 ) -> bool:
     """
     Exact match of math if and only if:
@@ -577,8 +576,8 @@ def math_equal(
     if str(prediction.strip().lower()) == str(reference.strip().lower()):
         return True
     if (
-        reference in ["A", "B", "C", "D", "E"]
-        and choice_answer_clean(prediction) == reference
+            reference in ["A", "B", "C", "D", "E"]
+            and choice_answer_clean(prediction) == reference
     ):
         return True
 
@@ -619,13 +618,13 @@ def math_equal(
     ## deal with [], (), {}
     pred_str, ref_str = prediction, reference
     if (
-        prediction.startswith("[")
-        and prediction.endswith("]")
-        and not reference.startswith("(")
+            prediction.startswith("[")
+            and prediction.endswith("]")
+            and not reference.startswith("(")
     ) or (
-        prediction.startswith("(")
-        and prediction.endswith(")")
-        and not reference.startswith("[")
+            prediction.startswith("(")
+            and prediction.endswith(")")
+            and not reference.startswith("[")
     ):
         pred_str = pred_str.strip("[]()")
         ref_str = ref_str.strip("[]()")
@@ -637,50 +636,50 @@ def math_equal(
 
     ## [a, b] vs. [c, d], return a==c and b==d
     if (
-        regex.match(r"(\(|\[).+(\)|\])", prediction) is not None
-        and regex.match(r"(\(|\[).+(\)|\])", reference) is not None
+            regex.match(r"(\(|\[).+(\)|\])", prediction) is not None
+            and regex.match(r"(\(|\[).+(\)|\])", reference) is not None
     ):
         pred_parts = prediction[1:-1].split(",")
         ref_parts = reference[1:-1].split(",")
         if len(pred_parts) == len(ref_parts):
             if all(
-                [
-                    math_equal(
-                        pred_parts[i], ref_parts[i], include_percentage, is_close
-                    )
-                    for i in range(len(pred_parts))
-                ]
+                    [
+                        math_equal(
+                            pred_parts[i], ref_parts[i], include_percentage, is_close
+                        )
+                        for i in range(len(pred_parts))
+                    ]
             ):
                 return True
     if (
-        (
-            prediction.startswith("\\begin{pmatrix}")
-            or prediction.startswith("\\begin{bmatrix}")
-        )
-        and (
+            (
+                    prediction.startswith("\\begin{pmatrix}")
+                    or prediction.startswith("\\begin{bmatrix}")
+            )
+            and (
             prediction.endswith("\\end{pmatrix}")
             or prediction.endswith("\\end{bmatrix}")
-        )
-        and (
+    )
+            and (
             reference.startswith("\\begin{pmatrix}")
             or reference.startswith("\\begin{bmatrix}")
-        )
-        and (
+    )
+            and (
             reference.endswith("\\end{pmatrix}") or reference.endswith("\\end{bmatrix}")
-        )
+    )
     ):
         pred_lines = [
             line.strip()
             for line in prediction[
-                len("\\begin{pmatrix}") : -len("\\end{pmatrix}")
-            ].split("\\\\")
+                        len("\\begin{pmatrix}"): -len("\\end{pmatrix}")
+                        ].split("\\\\")
             if line.strip()
         ]
         ref_lines = [
             line.strip()
             for line in reference[
-                len("\\begin{pmatrix}") : -len("\\end{pmatrix}")
-            ].split("\\\\")
+                        len("\\begin{pmatrix}"): -len("\\end{pmatrix}")
+                        ].split("\\\\")
             if line.strip()
         ]
         matched = True
@@ -690,15 +689,15 @@ def math_equal(
                 ref_parts = ref_line.split("&")
                 if len(pred_parts) == len(ref_parts):
                     if not all(
-                        [
-                            math_equal(
-                                pred_parts[i],
-                                ref_parts[i],
-                                include_percentage,
-                                is_close,
-                            )
-                            for i in range(len(pred_parts))
-                        ]
+                            [
+                                math_equal(
+                                    pred_parts[i],
+                                    ref_parts[i],
+                                    include_percentage,
+                                    is_close,
+                                )
+                                for i in range(len(pred_parts))
+                            ]
                     ):
                         matched = False
                         break
@@ -719,21 +718,21 @@ def math_equal(
         if symbolic_equal(pred, ref) or symbolic_equal(f"-({pred})", ref):
             return True
     elif (
-        prediction.count("=") == 1
-        and len(prediction.split("=")[0].strip()) <= 2
-        and "=" not in reference
+            prediction.count("=") == 1
+            and len(prediction.split("=")[0].strip()) <= 2
+            and "=" not in reference
     ):
         if math_equal(
-            prediction.split("=")[1], reference, include_percentage, is_close
+                prediction.split("=")[1], reference, include_percentage, is_close
         ):
             return True
     elif (
-        reference.count("=") == 1
-        and len(reference.split("=")[0].strip()) <= 2
-        and "=" not in prediction
+            reference.count("=") == 1
+            and len(reference.split("=")[0].strip()) <= 2
+            and "=" not in prediction
     ):
         if math_equal(
-            prediction, reference.split("=")[1], include_percentage, is_close
+                prediction, reference.split("=")[1], include_percentage, is_close
         ):
             return True
 
