@@ -92,22 +92,31 @@ def should_early_exit(
     return True
 
 
+class PromptLengthExceeded(Exception):
+    """Prompt length exceeded"""
+
+    def __init__(self, prompt_len: int, max_len: int):
+        self.prompt_len = prompt_len
+        self.max_len = max_len
+        super().__init__(f"Prompt length exceeded: {prompt_len} > {max_len}")
+
+
 def guard_prompt_len(prompt: str, max_len: int) -> str:
     """Guard the prompt length"""
     prompt_len = len(tokenizer.encode(prompt))
     if prompt_len > max_len:
-        raise ValueError(f"Prompt length exceeded: {prompt_len} > {max_len}")
-    return prompt   
+        raise PromptLengthExceeded(prompt_len, max_len)
+    return prompt
 
 
 def get_completion(
-    user_message: str, 
-    temperature: float = 0.7, 
-    
-    max_tokens: int = 1024,
-    continue_certain_bar: int = 2,
-    detect_tokens: int = 32,
-    probe_suffix_text: str = DEFAULT_PROBE_SUFFIX,
+        user_message: str,
+        temperature: float = 0.7,
+
+        max_tokens: int = 1024,
+        continue_certain_bar: int = 2,
+        detect_tokens: int = 32,
+        probe_suffix_text: str = DEFAULT_PROBE_SUFFIX,
 ) -> tuple[str, list[str]]:
     """
     Get completion from the model using OpenAI API
@@ -133,53 +142,57 @@ def get_completion(
     answers = []
     history: list[str] = [prompt]
 
-    # TODO: (1) Ensure prompt max token is not exceeded; 
+    # TODO: (1) Ensure text are yielded back to user
+    try:
+        while True:
+            # Prompt the model to get 32 tokens
+            prompt = "".join(history)
+            prompt = guard_prompt_len(prompt, max_prompt_len)
+            response = client.completions.create(
+                model=model,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=detect_tokens,
+                top_p=0.95,
+            )
 
-    while True:
-        # Prompt the model to get 32 tokens
-        prompt = "".join(history)
-        prompt = guard_prompt_len(prompt, max_prompt_len)
-        response = client.completions.create(
-            model=model,
-            prompt=prompt,
-            temperature=temperature,
-            max_tokens=detect_tokens, 
-            top_p=0.95,
-        )
+            output_text = response.choices[0].text
+            history.append(output_text)
 
-        text = response.choices[0].text
-        history.append(text)
+            # Probe the model to see if it can get the answer 
+            message_sending = "".join(history) + probe_suffix_text
+            message_sending = guard_prompt_len(message_sending, max_prompt_len)
+            logger.info(f"Message sending: {repr(message_sending)}")
+            probe_response = client.completions.create(
+                model=model,
+                temperature=0.6,
+                prompt=message_sending,
+                max_tokens=20, top_p=0.95,
+            )
 
-        # Probe the model to see if it can get the answer 
-        message_sending = "".join(history) + probe_suffix_text
-        message_sending = guard_prompt_len(message_sending, max_prompt_len)
-        logger.info(f"Message sending: {repr(message_sending)}")
-        probe_response = client.completions.create(
-            model=model,
-            temperature=0.6,
-            prompt=message_sending,
-            max_tokens=20, top_p=0.95,
-        )
+            probe_response_text = probe_response.choices[0].text
+            logger.info(f"Probe response: {repr(probe_response_text)}")
 
-        probe_response_text = probe_response.choices[0].text
-        logger.info(f"Probe response: {repr(probe_response_text)}")
+            # Get the answer from the probe response
+            answer = obtaint_answer(probe_response_text)
+            answers.append(answer)
+            logger.info(f"Answer: {repr(answer)}")
 
-        # Get the answer from the probe response
-        answer = obtaint_answer(probe_response_text)
-        answers.append(answer)
-        logger.info(f"Answer: {repr(answer)}")
+            if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar):
+                logger.info("Early exit")
+                final_text = message_sending + probe_response_text
+                return final_text, answers
 
-        if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar):
-            logger.info("Early exit")
-            final_text = message_sending + probe_response_text
-            return final_text, answers
+    except PromptLengthExceeded as e:
+        pass
 
+    logger.info("Max output token length exceeded...")
     text = "".join(history)
     return text, answers
 
 
 # Example usage
-user_message = "2 + 2 = ?"
+user_message = "What is the ultimate answer to the universe?"
 response, answers = get_completion(user_message)
 logger.info(f"Response: {repr(response)}")
 logger.info(f"Answers: {repr(answers)}")
