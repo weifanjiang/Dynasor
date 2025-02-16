@@ -402,10 +402,12 @@ async def handle_adaptive_compute(request: CompletionRequest, raw_request: Reque
     output_var_template: Optional[CompletionStreamResponse] = None
 
     # Setup basic constants
-    probe_text = adaptive_compute['probe_text']
-    probe_text_end = adaptive_compute['probe_text_end']
-    certainty_window = adaptive_compute['certainty_window']
-    token_interval = adaptive_compute['token_interval']
+    probe_text = adaptive_compute.get('probe_text', None)
+    probe_text_end = adaptive_compute.get('probe_text_end', None)
+    certainty_window = adaptive_compute.get('certainty_window', 2)
+    token_interval = adaptive_compute.get('token_interval', 32)
+
+    assert probe_text is not None
 
 
     # Setup the request for actual query.
