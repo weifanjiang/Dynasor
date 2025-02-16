@@ -485,8 +485,7 @@ async def main_async_2():
     user_message = format_deepseek_prompt(user_message)
     logger.info(f"User message: {repr(user_message)}")
     logger.info("Start generating...")
-    # async for item in get_completion_async_simple(
-    async for item in get_completion_async(
+    async for item in get_completion_async_2(
         user_message,
         format_final_answer=False,
     ):
