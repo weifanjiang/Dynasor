@@ -1,7 +1,7 @@
 from openai import OpenAI
 from transformers import AutoTokenizer
 
-from entropy import eqaul_group, obtaint_answer
+from entropy import eqaul_group, obtaint_answer, count_not_empty
 
 openai_api_key = "dr32r34tnjnfkd"
 openai_api_base = "http://localhost:8000/v1"
@@ -46,7 +46,7 @@ def init_logging():
     logging.addLevelName(
         logging.DEBUG,
         "\033[34m%s\033[0m" % logging.getLevelName(logging.DEBUG)
-    )  # Blue 
+    )  # Blue
     logging.addLevelName(
         logging.ERROR,
         "\033[31m%s\033[0m" % logging.getLevelName(logging.ERROR)
@@ -72,11 +72,13 @@ def has_value(x) -> bool:
         return len(x) > 0
     return True
 
+
 def should_early_exit(
     answers: list[str],
     probe_response_text: str,
     uncertain_words: list[str],
     continue_certain_bar: int,
+    is_certains: list[bool],
 ) -> bool:
     """
     Check if the answer is consistent or certain.
@@ -96,9 +98,11 @@ def should_early_exit(
 
     # The answers should be consistent - may need to use some small model to verify this.
 
-    answers = [i for i in answers if has_value(i)]
-    if not eqaul_group(answers[-continue_certain_bar:]):
-        return False
+    # answers = [i for i in answers if has_value(i)]
+    if eqaul_group(answers[-continue_certain_bar:]):
+        if count_not_empty(answers) >= continue_certain_bar:
+            if sum(is_certains[-continue_certain_bar:]) == continue_certain_bar:
+                return True
 
     return True
 
@@ -112,6 +116,11 @@ class PromptLengthExceeded(Exception):
         super().__init__(f"Prompt length exceeded: {prompt_len} > {max_len}")
 
 
+def is_certain_answer(probe_response_text: str, uncertain_words: list[str]) -> bool:
+    """Check if the answer is certain"""
+    return not any(word in probe_response_text.lower() for word in uncertain_words)
+
+
 def guard_prompt_len(prompt: str, max_len: int) -> str:
     """Guard the prompt length"""
     prompt_len = len(tokenizer.encode(prompt))
@@ -121,13 +130,12 @@ def guard_prompt_len(prompt: str, max_len: int) -> str:
 
 
 def get_completion(
-        user_message: str,
-        temperature: float = 0.7,
-
-        max_tokens: int = 1024,
-        continue_certain_bar: int = 2,
-        detect_tokens: int = 32,
-        probe_suffix_text: str = DEFAULT_PROBE_SUFFIX,
+    user_message: str,
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+    continue_certain_bar: int = 2,
+    detect_tokens: int = 32,
+    probe_suffix_text: str = DEFAULT_PROBE_SUFFIX,
 ) -> tuple[str, list[str]]:
     """
     Get completion from the model using OpenAI API
@@ -151,14 +159,13 @@ def get_completion(
 
     prompt = format_deepseek_prompt(user_message)
     answers = []
+    is_certains = []
     history: list[str] = [prompt]
 
     # TODO: (1) Ensure text are yielded back to user
     try:
         while True:
             # Prompt the model to get 32 tokens
-            prompt = "".join(history)
-            prompt = guard_prompt_len(prompt, max_prompt_len)
             response = client.completions.create(
                 model=model,
                 prompt=prompt,
@@ -170,9 +177,9 @@ def get_completion(
             output_text = response.choices[0].text
             history.append(output_text)
 
-            # Probe the model to see if it can get the answer 
-            message_sending = "".join(history) + probe_suffix_text
-            message_sending = guard_prompt_len(message_sending, max_prompt_len)
+            # Probe the model to see if it can get the answer
+            prompt += output_text
+            message_sending = prompt + probe_suffix_text
             logger.info(f"Message sending: {repr(message_sending)}")
             probe_response = client.completions.create(
                 model=model,
@@ -187,9 +194,11 @@ def get_completion(
             # Get the answer from the probe response
             answer = obtaint_answer(probe_response_text)
             answers.append(answer)
+            is_certain = is_certain_answer(probe_response_text, uncertain_words)
+            is_certains.append(is_certain)
             logger.info(f"Answer: {repr(answer)}")
 
-            if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar):
+            if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar, is_certains):
                 logger.info("Early exit")
                 final_text = message_sending + probe_response_text
                 return final_text, answers
