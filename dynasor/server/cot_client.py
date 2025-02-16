@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Union
 
 from openai import OpenAI, AsyncOpenAI
 from transformers import AutoTokenizer
@@ -287,6 +287,43 @@ async def get_completion_async(
     logger.debug("Max output token length exceeded...")
     text = "".join(history)
     yield CompletionResult(text, answers)
+
+
+
+
+# async def get_completion_async_v2(
+#     user_message: str,
+#     temperature: float = 0.7,
+#     max_tokens: int = 1024,
+#     continue_certain_bar: int = 2,
+#     detect_tokens: int = 32,
+# ) -> AsyncGenerator[CompletionResult, None]:
+#     """
+#     Get completion from the model using OpenAI API
+
+#     Args:
+#         user_message: The user message to complete
+#         temperature: The temperature of the model
+#         max_tokens: The maximum number of tokens to generate
+#         max_len: The maximum length of the prompt
+#         continue_certain_bar: The number of answers to continue the prompt
+#         detect_tokens: The number of tokens to detect
+#         probe_suffix_text: The suffix text to probe the model
+
+#     Returns:
+#         final_text: The final text of the completion
+#         answers: The answers from the model
+#     """
+
+#     max_prompt_len: int = tokenizer.model_max_length
+#     logger.debug(f"Max prompt length: {max_prompt_len}")
+
+#     prompt = format_deepseek_prompt(user_message)
+#     answers = []
+#     is_certains = []
+#     history: list[str] = [prompt]
+
+#     pass
 
 
 def main():

@@ -299,6 +299,10 @@ def completion(request: Request) -> Optional[OpenAIServingCompletion]:
     return request.app.state.openai_serving_completion
 
 
+def adaptive_compute_completion(request: Request) -> Optional[OpenAIServingCompletion]:
+    return request.app.state.adaptive_compute_openai_serving_completion
+
+
 def pooling(request: Request) -> Optional[OpenAIServingPooling]:
     return request.app.state.openai_serving_pooling
 
@@ -388,7 +392,7 @@ from dynasor.server.entropy import (
 import time
 from vllm.entrypoints.openai.protocol import CompletionStreamResponse
 async def handle_adaptive_compute(request: CompletionRequest, raw_request: Request):
-    handler = completion(raw_request)
+    handler = adaptive_compute_completion(raw_request)
     assert handler is not None
 
     original_request = request.model_copy()
@@ -490,10 +494,14 @@ async def handle_adaptive_compute(request: CompletionRequest, raw_request: Reque
     
     yield f"data: [DONE]\n\n"
 
+
+
+
 @router.post("/v1/completions")
 @with_cancellation
 async def create_completion(request: CompletionRequest, raw_request: Request):
     handler = completion(raw_request)
+    
     if handler is None:
         return base(raw_request).create_error_response(
             message="The model does not support Completions API")
@@ -501,14 +509,14 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
     json_obj = await raw_request.json()
     adaptive_compute = json_obj.get("adaptive_compute", None)
     
-    if adaptive_compute:
+    if adaptive_compute is not None:
         generator = handle_adaptive_compute(request, raw_request)
-        print(f"generator = {generator}, type = {type(generator)}")
         return StreamingResponse(
             content=generator, 
             media_type="text/event-stream"
         )
     
+    print("Handling normal completion")
     generator = await handler.create_completion(request, raw_request)
     if isinstance(generator, ErrorResponse):
         return JSONResponse(content=generator.model_dump(),
@@ -900,8 +908,17 @@ async def init_app_state(
         enable_prompt_tokens_details=args.enable_prompt_tokens_details,
     ) if model_config.runner_type == "generate" else None
 
+    # OpenAIServingCompletion
+    state.openai_serving_completion = OpenAIServingCompletion(
+        engine_client,
+        model_config,
+        state.openai_serving_models,
+        request_logger=request_logger,
+        return_tokens_as_token_ids=args.return_tokens_as_token_ids,
+    ) if model_config.runner_type == "generate" else None
+
     from dynasor.server.serving_completion import AdaptiveComputeOpenAIServingCompletion
-    state.openai_serving_completion = AdaptiveComputeOpenAIServingCompletion(
+    state.adaptive_compute_openai_serving_completion = AdaptiveComputeOpenAIServingCompletion(
         engine_client,
         model_config,
         state.openai_serving_models,
