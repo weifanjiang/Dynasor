@@ -6,9 +6,10 @@ from openai import OpenAI, AsyncOpenAI
 from transformers import AutoTokenizer
 
 from dynasor.server.entropy import (
-    eqaul_group, obtain_answer, count_not_empty, should_early_exit,
+    obtain_answer, should_early_exit,
     uncertain_words, is_certain_answer
 )
+
 
 @dataclass
 class TokenResult:
@@ -83,8 +84,6 @@ def init_logging():
 logger = init_logging()
 
 
-
-
 class PromptLengthExceeded(Exception):
     """Prompt length exceeded"""
 
@@ -92,8 +91,6 @@ class PromptLengthExceeded(Exception):
         self.prompt_len = prompt_len
         self.max_len = max_len
         super().__init__(f"Prompt length exceeded: {prompt_len} > {max_len}")
-
-
 
 
 def guard_prompt_len(prompt: str, max_len: int) -> str:
@@ -327,7 +324,6 @@ async def get_completion_async_2(
     task_queue = asyncio.Queue()
     exit_event = asyncio.Event()
 
-
     async def loop_continual_request():
         remaining_tokens = max_tokens
         running_prompt = prompt
@@ -336,7 +332,7 @@ async def get_completion_async_2(
             await asyncio.sleep(0.1)
             if remaining_tokens <= 0:
                 break
-            
+
             if exit_event.is_set():
                 break
 
@@ -355,16 +351,15 @@ async def get_completion_async_2(
                 output_text += token
                 remaining_tokens -= 1
                 yield TokenResult(token)
-            
+
             history.append(output_text)
-            
+
             running_prompt += output_text
-            
+
             task_queue.put_nowait(dict(
                 prompt=running_prompt,
             ))
         pass
-
 
     async def loop_probe_request():
         # TODO: Ensure always get the last task.
@@ -375,7 +370,7 @@ async def get_completion_async_2(
             if task_queue.empty():
                 await asyncio.sleep(0.1)
                 continue
-            
+
             task = task_queue.get_nowait()
             prompt = task["prompt"]
             message_sending = prompt + probe_suffix_text
@@ -383,11 +378,11 @@ async def get_completion_async_2(
                 model=model,
                 temperature=0.6,
                 prompt=message_sending,
-                max_tokens=20, 
+                max_tokens=20,
                 top_p=0.95,
             )
             probe_response_text = response.choices[0].text
-            
+
             # (3) Get the answer from the probe response
             answer = obtain_answer(probe_response_text)
             answers.append(answer)
@@ -401,7 +396,7 @@ async def get_completion_async_2(
                 # if format_final_answer:
                 #     # Get response text after </think> if present
                 #     # Remove anything before </think> if present
-                    
+
                 #     if "</think>" in probe_response_text:
                 #         after_think_text = re.sub(r'.*?</think>', '', probe_response_text)
                 #         yield TokenResult(after_think_text)
@@ -412,11 +407,9 @@ async def get_completion_async_2(
                 break
         pass
 
-
-    
     output_queue = asyncio.Queue()
     exit_queue = asyncio.Queue()
-    
+
     # Helper function to forward the yielded tokens from a generator into our output_queue.
     async def forward(
         gen: AsyncGenerator[Union[TokenResult, CompletionResult], None],
@@ -435,7 +428,7 @@ async def get_completion_async_2(
             yield await exit_queue.get()
             yield await exit_queue.get()
             break
-        
+
         try:
             token = await asyncio.wait_for(output_queue.get(), timeout=0.01)
             yield token
@@ -477,7 +470,6 @@ async def main_async():
             logger.info(f"Final text: {repr(final_text)}")
             logger.info(f"Answers: {repr(answers)}")
             break
-
 
 
 async def main_async_2():
