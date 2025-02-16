@@ -1,4 +1,6 @@
-from openai import OpenAI
+import asyncio
+
+from openai import OpenAI, AsyncOpenAI
 from transformers import AutoTokenizer
 
 from entropy import eqaul_group, obtaint_answer, count_not_empty
@@ -8,6 +10,7 @@ openai_api_base = "http://localhost:8000/v1"
 model = 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B'
 
 client = OpenAI(api_key=openai_api_key, base_url=openai_api_base)
+async_client = AsyncOpenAI(api_key=openai_api_key, base_url=openai_api_base)
 tokenizer = AutoTokenizer.from_pretrained(model)
 
 
@@ -162,10 +165,9 @@ def get_completion(
     is_certains = []
     history: list[str] = [prompt]
 
-    # TODO: (1) Ensure text are yielded back to user
     try:
         while True:
-            # Prompt the model to get 32 tokens
+            # (1) Prompt the model to get 32 tokens
             response = client.completions.create(
                 model=model,
                 prompt=prompt,
@@ -177,7 +179,7 @@ def get_completion(
             output_text = response.choices[0].text
             history.append(output_text)
 
-            # Probe the model to see if it can get the answer
+            # (2) Probe the model to see if it can get the answer
             prompt += output_text
             message_sending = prompt + probe_suffix_text
             logger.info(f"Message sending: {repr(message_sending)}")
@@ -191,7 +193,7 @@ def get_completion(
             probe_response_text = probe_response.choices[0].text
             logger.info(f"Probe response: {repr(probe_response_text)}")
 
-            # Get the answer from the probe response
+            # (3) Get the answer from the probe response
             answer = obtaint_answer(probe_response_text)
             answers.append(answer)
             is_certain = is_certain_answer(probe_response_text, uncertain_words)
@@ -211,11 +213,135 @@ def get_completion(
     return text, answers
 
 
-# Example usage
-user_message = "What is the ultimate answer to the universe?"
-response, answers = get_completion(user_message)
-logger.info(f"Response: {repr(response)}")
-logger.info(f"Answers: {repr(answers)}")
+from dataclasses import dataclass
 
-final_answer = answers[-1]
-logger.info(f"Final answer: {repr(final_answer)}")
+
+@dataclass
+class TokenResult:
+    token: str
+
+
+@dataclass
+class CompletionResult:
+    final_text: str
+    answers: list[str]
+
+
+from typing import AsyncGenerator
+
+
+async def get_completion_async(
+    user_message: str,
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+    continue_certain_bar: int = 2,
+    detect_tokens: int = 32,
+    probe_suffix_text: str = DEFAULT_PROBE_SUFFIX,
+) -> AsyncGenerator[CompletionResult, None]:
+    """
+    Get completion from the model using OpenAI API
+
+    Args:
+        user_message: The user message to complete
+        temperature: The temperature of the model
+        max_tokens: The maximum number of tokens to generate
+        max_len: The maximum length of the prompt
+        continue_certain_bar: The number of answers to continue the prompt
+        detect_tokens: The number of tokens to detect
+        probe_suffix_text: The suffix text to probe the model
+
+    Returns:
+        final_text: The final text of the completion
+        answers: The answers from the model
+    """
+
+    max_prompt_len: int = tokenizer.model_max_length
+    logger.info(f"Max prompt length: {max_prompt_len}")
+
+    prompt = format_deepseek_prompt(user_message)
+    answers = []
+    is_certains = []
+    history: list[str] = [prompt]
+
+    try:
+        while True:
+            # (1) Prompt the model to get 32 tokens
+            response = client.completions.create(
+                model=model,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=detect_tokens,
+                top_p=0.95,
+                stream=True,
+            )
+
+            output_text = ""
+            for chunk in response:
+                token = chunk.choices[0].text
+                output_text += token
+                yield TokenResult(token)
+
+            history.append(output_text)
+
+            # (2) Probe the model to see if it can get the answer
+            prompt += output_text
+            message_sending = prompt + probe_suffix_text
+            logger.info(f"Message sending: {repr(message_sending)}")
+            probe_response = client.completions.create(
+                model=model,
+                temperature=0.6,
+                prompt=message_sending,
+                max_tokens=20, top_p=0.95,
+            )
+
+            probe_response_text = probe_response.choices[0].text
+            logger.info(f"Probe response: {repr(probe_response_text)}")
+
+            # (3) Get the answer from the probe response
+            answer = obtaint_answer(probe_response_text)
+            answers.append(answer)
+            is_certain = is_certain_answer(probe_response_text, uncertain_words)
+            is_certains.append(is_certain)
+            logger.info(f"Answer: {repr(answer)}")
+
+            if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar, is_certains):
+                logger.info("Early exit")
+                final_text = message_sending + probe_response_text
+                yield CompletionResult(final_text, answers)
+
+    except PromptLengthExceeded as e:
+        pass
+
+    logger.info("Max output token length exceeded...")
+    text = "".join(history)
+    yield CompletionResult(text, answers)
+
+
+def main():
+    # Example usage
+    user_message = "What is the ultimate answer to the universe?"
+    response, answers = get_completion(user_message)
+    logger.info(f"Response: {repr(response)}")
+    logger.info(f"Answers: {repr(answers)}")
+
+    final_answer = answers[-1]
+    logger.info(f"Final answer: {repr(final_answer)}")
+
+
+async def main_async():
+    user_message = "What is the ultimate answer to the universe?"
+    logger.info(f"User message: {repr(user_message)}")
+    logger.info("Start generating...")
+    async for item in get_completion_async(user_message):
+        if isinstance(item, TokenResult):
+            print(item.token, end="", flush=True)
+        elif isinstance(item, CompletionResult):
+            answers = item.answers
+            final_text = item.final_text
+            logger.info(f"Final text: {repr(final_text)}")
+            logger.info(f"Answers: {repr(answers)}")
+            break
+
+
+if __name__ == "__main__":
+    asyncio.run(main_async())
