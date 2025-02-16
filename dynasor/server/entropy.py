@@ -90,3 +90,59 @@ def obtaint_answer(s):
                 return s[:i]
             stack.pop()
     return ""
+
+def obtain_answer(s):
+    return obtaint_answer(s)
+
+
+uncertain_words = ['wait', 'hold', 'but', 'okay', 'no', 'hmm']
+
+
+def is_certain_answer(probe_response_text: str, uncertain_words: list[str]) -> bool:
+    """Check if the answer is certain"""
+    return not any(word in probe_response_text.lower() for word in uncertain_words)
+
+
+def has_value(x) -> bool:
+    if x is None:
+        return False
+    if isinstance(x, str):
+        return len(x.strip()) > 0
+    if isinstance(x, list):
+        return len(x) > 0
+    return True
+
+
+def should_early_exit(
+    answers: list[str],
+    probe_response_text: str,
+    uncertain_words: list[str],
+    continue_certain_bar: int,
+    is_certains: list[bool],
+) -> bool:
+    """
+    Check if the answer is consistent or certain.
+    1. Number of answers should be greater than the threshold
+    2. The probe response text should not contain any uncertain words
+    3. The answers should be consistent
+    """
+
+    # Number of answers should be greater than the threshold
+    if len(answers) < continue_certain_bar:
+        return False
+
+    # The probe response text should not contain any uncertain words
+    probe_response_text_lower = probe_response_text.lower()
+    if any(word in probe_response_text_lower for word in uncertain_words):
+        return False
+
+    # The last answer window should be consistent
+    answer_candidates = answers[-continue_certain_bar:]
+    is_certains = is_certains[-continue_certain_bar:]
+    if eqaul_group(answer_candidates):
+        if count_not_empty(answer_candidates) == continue_certain_bar:
+            if sum(is_certains) == continue_certain_bar:
+                # logger.debug(f"Early exit on: {answer_candidates = } ({is_certains = })")
+                return True
+
+    return True

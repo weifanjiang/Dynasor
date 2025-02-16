@@ -5,8 +5,10 @@ from typing import AsyncGenerator
 from openai import OpenAI, AsyncOpenAI
 from transformers import AutoTokenizer
 
-from entropy import eqaul_group, obtaint_answer, count_not_empty
-
+from entropy import (
+    eqaul_group, obtain_answer, count_not_empty, should_early_exit,
+    uncertain_words, is_certain_answer
+)
 
 @dataclass
 class TokenResult:
@@ -81,49 +83,6 @@ def init_logging():
 logger = init_logging()
 
 
-def has_value(x) -> bool:
-    if x is None:
-        return False
-    if isinstance(x, str):
-        return len(x.strip()) > 0
-    if isinstance(x, list):
-        return len(x) > 0
-    return True
-
-
-def should_early_exit(
-    answers: list[str],
-    probe_response_text: str,
-    uncertain_words: list[str],
-    continue_certain_bar: int,
-    is_certains: list[bool],
-) -> bool:
-    """
-    Check if the answer is consistent or certain.
-    1. Number of answers should be greater than the threshold
-    2. The probe response text should not contain any uncertain words
-    3. The answers should be consistent
-    """
-
-    # Number of answers should be greater than the threshold
-    if len(answers) < continue_certain_bar:
-        return False
-
-    # The probe response text should not contain any uncertain words
-    probe_response_text_lower = probe_response_text.lower()
-    if any(word in probe_response_text_lower for word in uncertain_words):
-        return False
-
-    # The last answer window should be consistent
-    answer_candidates = answers[-continue_certain_bar:]
-    is_certains = is_certains[-continue_certain_bar:]
-    if eqaul_group(answer_candidates):
-        if count_not_empty(answer_candidates) == continue_certain_bar:
-            if sum(is_certains) == continue_certain_bar:
-                logger.debug(f"Early exit on: {answer_candidates = } ({is_certains = })")
-                return True
-
-    return True
 
 
 class PromptLengthExceeded(Exception):
@@ -135,9 +94,6 @@ class PromptLengthExceeded(Exception):
         super().__init__(f"Prompt length exceeded: {prompt_len} > {max_len}")
 
 
-def is_certain_answer(probe_response_text: str, uncertain_words: list[str]) -> bool:
-    """Check if the answer is certain"""
-    return not any(word in probe_response_text.lower() for word in uncertain_words)
 
 
 def guard_prompt_len(prompt: str, max_len: int) -> str:
@@ -210,7 +166,7 @@ def get_completion(
             logger.debug(f"Probe response: {repr(probe_response_text)}")
 
             # (3) Get the answer from the probe response
-            answer = obtaint_answer(probe_response_text)
+            answer = obtain_answer(probe_response_text)
             answers.append(answer)
             is_certain = is_certain_answer(probe_response_text, uncertain_words)
             is_certains.append(is_certain)
@@ -299,7 +255,7 @@ async def get_completion_async(
             logger.debug(f"Probe response: {repr(probe_response_text)}")
 
             # (3) Get the answer from the probe response
-            answer = obtaint_answer(probe_response_text)
+            answer = obtain_answer(probe_response_text)
             answers.append(answer)
             is_certain = is_certain_answer(probe_response_text, uncertain_words)
             is_certains.append(is_certain)
