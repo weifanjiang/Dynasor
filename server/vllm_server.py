@@ -1,9 +1,23 @@
 import asyncio
+from dataclasses import dataclass
+from typing import AsyncGenerator
 
 from openai import OpenAI, AsyncOpenAI
 from transformers import AutoTokenizer
 
 from entropy import eqaul_group, obtaint_answer, count_not_empty
+
+
+@dataclass
+class TokenResult:
+    token: str
+
+
+@dataclass
+class CompletionResult:
+    final_text: str
+    answers: list[str]
+
 
 openai_api_key = "dr32r34tnjnfkd"
 openai_api_base = "http://localhost:8000/v1"
@@ -29,7 +43,8 @@ import logging
 def init_logging():
     # Define color formatting for different log levels
     logging.basicConfig(
-        level=logging.INFO,
+        # level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
         handlers=[
@@ -99,12 +114,13 @@ def should_early_exit(
     if any(word in probe_response_text_lower for word in uncertain_words):
         return False
 
-    # The answers should be consistent - may need to use some small model to verify this.
-
-    # answers = [i for i in answers if has_value(i)]
-    if eqaul_group(answers[-continue_certain_bar:]):
-        if count_not_empty(answers) >= continue_certain_bar:
-            if sum(is_certains[-continue_certain_bar:]) == continue_certain_bar:
+    # The last answer window should be consistent
+    answer_candidates = answers[-continue_certain_bar:]
+    is_certains = is_certains[-continue_certain_bar:]
+    if eqaul_group(answer_candidates):
+        if count_not_empty(answer_candidates) == continue_certain_bar:
+            if sum(is_certains) == continue_certain_bar:
+                logger.debug(f"Early exit on: {answer_candidates = } ({is_certains = })")
                 return True
 
     return True
@@ -158,7 +174,7 @@ def get_completion(
     """
 
     max_prompt_len: int = tokenizer.model_max_length
-    logger.info(f"Max prompt length: {max_prompt_len}")
+    logger.debug(f"Max prompt length: {max_prompt_len}")
 
     prompt = format_deepseek_prompt(user_message)
     answers = []
@@ -182,7 +198,7 @@ def get_completion(
             # (2) Probe the model to see if it can get the answer
             prompt += output_text
             message_sending = prompt + probe_suffix_text
-            logger.info(f"Message sending: {repr(message_sending)}")
+            logger.debug(f"Message sending: {repr(message_sending)}")
             probe_response = client.completions.create(
                 model=model,
                 temperature=0.6,
@@ -191,43 +207,26 @@ def get_completion(
             )
 
             probe_response_text = probe_response.choices[0].text
-            logger.info(f"Probe response: {repr(probe_response_text)}")
+            logger.debug(f"Probe response: {repr(probe_response_text)}")
 
             # (3) Get the answer from the probe response
             answer = obtaint_answer(probe_response_text)
             answers.append(answer)
             is_certain = is_certain_answer(probe_response_text, uncertain_words)
             is_certains.append(is_certain)
-            logger.info(f"Answer: {repr(answer)}")
+            logger.debug(f"Answer: {repr(answer)}")
 
             if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar, is_certains):
-                logger.info("Early exit")
+                logger.debug("Early exit")
                 final_text = message_sending + probe_response_text
                 return final_text, answers
 
     except PromptLengthExceeded as e:
         pass
 
-    logger.info("Max output token length exceeded...")
+    logger.debug("Max output token length exceeded...")
     text = "".join(history)
     return text, answers
-
-
-from dataclasses import dataclass
-
-
-@dataclass
-class TokenResult:
-    token: str
-
-
-@dataclass
-class CompletionResult:
-    final_text: str
-    answers: list[str]
-
-
-from typing import AsyncGenerator
 
 
 async def get_completion_async(
@@ -237,6 +236,8 @@ async def get_completion_async(
     continue_certain_bar: int = 2,
     detect_tokens: int = 32,
     probe_suffix_text: str = DEFAULT_PROBE_SUFFIX,
+    probe_suffix_text_end: str = DEFAULT_PROBE_SUFFIX_2,
+    format_final_answer: bool = True,
 ) -> AsyncGenerator[CompletionResult, None]:
     """
     Get completion from the model using OpenAI API
@@ -256,7 +257,7 @@ async def get_completion_async(
     """
 
     max_prompt_len: int = tokenizer.model_max_length
-    logger.info(f"Max prompt length: {max_prompt_len}")
+    logger.debug(f"Max prompt length: {max_prompt_len}")
 
     prompt = format_deepseek_prompt(user_message)
     answers = []
@@ -286,7 +287,7 @@ async def get_completion_async(
             # (2) Probe the model to see if it can get the answer
             prompt += output_text
             message_sending = prompt + probe_suffix_text
-            logger.info(f"Message sending: {repr(message_sending)}")
+            logger.debug(f"Message sending: {repr(message_sending)}")
             probe_response = client.completions.create(
                 model=model,
                 temperature=0.6,
@@ -295,24 +296,39 @@ async def get_completion_async(
             )
 
             probe_response_text = probe_response.choices[0].text
-            logger.info(f"Probe response: {repr(probe_response_text)}")
+            logger.debug(f"Probe response: {repr(probe_response_text)}")
 
             # (3) Get the answer from the probe response
             answer = obtaint_answer(probe_response_text)
             answers.append(answer)
             is_certain = is_certain_answer(probe_response_text, uncertain_words)
             is_certains.append(is_certain)
-            logger.info(f"Answer: {repr(answer)}")
+            logger.debug(f"Answer: {repr(answer)}")
 
             if should_early_exit(answers, probe_response_text, uncertain_words, continue_certain_bar, is_certains):
-                logger.info("Early exit")
+                logger.debug("Early exit")
+                if not format_final_answer:
+                    yield TokenResult(probe_suffix_text)
+                    yield TokenResult(probe_response_text)
+                else:
+                    yield TokenResult(probe_suffix_text)
+                    yield TokenResult(answer)
+                    yield TokenResult(probe_suffix_text_end)
+
+                    # Get response text after </think> if present
+                    # Remove anything before </think> if present
+                    import re
+                    if "</think>" in probe_response_text:
+                        after_think_text = re.sub(r'.*?</think>', '', probe_response_text)
+                        yield TokenResult(after_think_text)
+
                 final_text = message_sending + probe_response_text
                 yield CompletionResult(final_text, answers)
 
     except PromptLengthExceeded as e:
         pass
 
-    logger.info("Max output token length exceeded...")
+    logger.debug("Max output token length exceeded...")
     text = "".join(history)
     yield CompletionResult(text, answers)
 
@@ -332,10 +348,14 @@ async def main_async():
     user_message = "What is the ultimate answer to the universe?"
     logger.info(f"User message: {repr(user_message)}")
     logger.info("Start generating...")
-    async for item in get_completion_async(user_message):
+    async for item in get_completion_async(
+        user_message,
+        format_final_answer=False,
+    ):
         if isinstance(item, TokenResult):
             print(item.token, end="", flush=True)
         elif isinstance(item, CompletionResult):
+            print()
             answers = item.answers
             final_text = item.final_text
             logger.info(f"Final text: {repr(final_text)}")
