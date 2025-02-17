@@ -3,6 +3,33 @@
 
 Simple extension on vLLM to help you speed up LLM reasoning (e.g., Long Chain of Thought).
 
+<!-- https://hao-ai-lab.github.io/blogs/dynasor-cot/ -->
+<!-- <div align="center" style="line-height: 1;">
+    <a href="https://viol2000.github.io/SubDomain/gradio-2.html" target="_blank" style="margin: 2px;">
+        <img alt="Demo" src="https://img.shields.io/badge/🤖Chat-Deepseek-blue?" style="display: inline-block; vertical-align: middle;"/>
+    </a>
+    <a href="https://x.com/haoailab" target="_blank" style="margin: 2px;">
+        <img alt="Twitter Follow" src="https://img.shields.io/badge/Twitter-haoailab-white?logo=x&logoColor=white" style="display: inline-block; vertical-align: middle;"/>
+    </a>
+    <a href="https://hao-ai-lab.github.io/blogs/dynasor-cot/" target="_blank" style="margin: 2px;">
+        <img alt="Blog" src="https://img.shields.io/badge/Blog-Dynasor-4CAF50?&color=4CAF50" style="display: inline-block; vertical-align: middle;"/>
+    </a>
+    <a href="https://arxiv.org/abs/2412.20993" style="margin: 2px;">
+        <img alt="License" src="https://img.shields.io/badge/Paper-Dynasor-4CAF50?&color=4CAF50" style="display: inline-block; vertical-align: middle;"/>
+    </a>
+</div> -->
+
+<div align="center" style="line-height: 1;">
+    | <a href="https://hao-ai-lab.github.io/blogs/dynasor-cot/">📝 Blog</a> 
+    | <a href="https://arxiv.org/abs/2412.20993">📄 Paper</a> 
+    | <a href="https://viol2000.github.io/SubDomain/gradio-2.html">🤖 Demo</a> 
+    | <a href="https://x.com/haoailab">🐦 Twitter/X</a> 
+    |
+</div>
+
+
+
+
 ## Installation
 
 ```bash
