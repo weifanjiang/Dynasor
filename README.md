@@ -81,12 +81,9 @@ dynasor-chat
 Then you should be entering the Dynasor Chat interface.
 ```bash
 > : The point $(a, b)$ lies on the line with the equation $3x + 2y = 12.$ When $a = 4$, what is the value of $b$?
-
 # ... wait for the answer ...
 **Final Answer:**
-[
- \boxed{0}
-\]
+[ \boxed{0} \]
 ```
 
 
