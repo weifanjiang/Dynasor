@@ -1,7 +1,7 @@
 
 # Dynasor
 
-Simple extension on vLLM to help you speed up LLM reasoning (e.g., Long Chain of Thought).
+Simple extension on vLLM to help you speed up reasoning model without training.
 
 <!-- https://hao-ai-lab.github.io/blogs/dynasor-cot/ -->
 <!-- <div align="center" style="line-height: 1;">
@@ -30,10 +30,17 @@ Simple extension on vLLM to help you speed up LLM reasoning (e.g., Long Chain of
 
 
 
-## Installation
+## Quick Start 
 
 ```bash
-pip install dynasor
+# Install vllm and dynasor
+pip install vllm dynasor
+
+# Setup a vLLM server
+vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
+
+# Start Dynasor Chat
+dynasor-chat
 ```
 
 
@@ -45,24 +52,23 @@ Dynasor uses a combination of techniques to speed up LLM reasoning:
 2. **Dynamic Execution**: We dynamically execute the prompt, and stop when the LLM has enough information to make a decision.
 
 
-# Launch
+## How to use Dynasor
 
 We provide 3 tools to launch Dynasor:
 
-1. [`dynasor-chat`](#dynasor-chat-cli-chat-interface): CLI Chat Interface, a CLI tool to easily chat with Dynasor
-2. [`dynasor-openai`](#dynasor-openai-openai-compatible-server): OpenAI Compatible Server / Client, an example to use Dynasor with OpenAI API
-3. [`dynasor-vllm`](#dynasor-vllm-vllm-native-server): vLLM-native Server that integrates Dynasor as a part of the vLLM OpenAI compatible server endpoint.
+1. [`dynasor-chat`](#dynasor-chat-cli-chat-interface): CLI chat interface to interact with Dynasor
+2. [`dynasor-openai`](#dynasor-openai-openai-compatible-server): OpenAI compatible server.
+3. [`dynasor-vllm`](#dynasor-vllm-vllm-native-server): vLLM-native server
 
 
-## `dynasor-chat`: CLI Chat Interface
+### `dynasor-chat`: CLI Chat Interface
 
 > [!WARNING]
 > We recommend enabling prefix caching, otherwise probing will be very slow.
 
 1. Setup a vLLM server
 ```bash
-vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 \
-    --enable-prefix-caching
+vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
 ```
 
 
@@ -74,13 +80,6 @@ dynasor-chat
 
 Then you should be entering the Dynasor Chat interface.
 ```bash
-Welcome to Dynasor Chat!
-• Model: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
-• Endpoint URL: http://localhost:8000/v1
-• Dynasor Saving Effort: mid
-Type 'help' to show help, and 'exit' to end the conversation.
-Type anything to start chatting.
-
 > : The point $(a, b)$ lies on the line with the equation $3x + 2y = 12.$ When $a = 4$, what is the value of $b$?
 
 # ... wait for the answer ...
@@ -91,23 +90,12 @@ Type anything to start chatting.
 ```
 
 
-> [!NOTE]  
-> You can also disable Dynasor by running
-> ```bash
-> # Disable Dynasor
-> dynasor-chat --dynasor-saving-effort none
-> ```
+### `dynasor-openai` OpenAI Compatible Server
 
-
-## `dynasor-openai` OpenAI Compatible Server
-
-> [!NOTE]  
-> We only support the `/chat/completions` endpoint for now. We will add the `/completions` endpoint in the future.
 
 1. Setup a vLLM server
 ```bash
-vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 \
-    --enable-prefix-caching
+vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
 ```
 
 2. Setup OpenAI compatible proxy server to server Dynasor
@@ -117,25 +105,20 @@ dynasor-openai
 
 3. Use our simiple client script to query:
 ```bash
-# Dynasor client
+# Sample Dynasor client script to ask some questions
 python examples/client.py --prompt "2+2=?"
 python examples/client.py --prompt "Solve x^2 + 4x = 4"
 python examples/client.py --prompt "How many nonzero points are there on x^3y + y^3z + z^3x = 0 over the finite field  𝔽_{{5}^{18}}  up to scaling?"
 ```
 
 
-## `dynasor-vllm`: vLLM-native Server
+### `dynasor-vllm`: vLLM-native Server
 
-We integrate Dynasor into vLLM as a part of the vLLM OpenAI compatible server endpoint.
-
-> [!NOTE]  
-> We only support the `/completion` endpoint for now. We will add the `/chat/completion` endpoint in the future.
-
+We build Dynasor on top of vLLM as a part of the vLLM OpenAI compatible server endpoint.
 
 1. Setup a dynasor-vllm server
 ```bash
-dynasor-vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 \
-    --enable-prefix-caching
+dynasor-vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
 ```
 
 2. Use our simple client script to query:
@@ -144,18 +127,24 @@ python examples/client-vllm.py
 ```
 
 
-# Benchmark
+## Benchmark
 
-## Token Deprivation Experiment
+### Token Deprivation Experiment
 
 Run the following command to perform token deprivation experiment on math500 dataset.
 ```bash
-mkdir -p benchmark-output
-
-python benchmark/TokenDeprivation/run.py \
---model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
---dataset math500 \
---step 32 --max-tokens 16384 --start 0 --end 10 \
---output benchmark-output/math500_step32_max16384_trials10  --probe-tokens 32 --probe "... Oh, I suddenly got the answer to the whole problem, **Final Answer**\n\n\\[ \\boxed{" 
+bash benchmark/TokenDeprivation/run.sh
 ```
 
+## Citation
+
+If you use Dynasor for your research, please cite our [paper](https://arxiv.org/abs/2412.20993):
+
+```bibtex
+@article{fu2024efficiently,
+  title={Efficiently Serving LLM Reasoning Programs with Certaindex},
+  author={Fu, Yichao and Chen, Junda and Zhu, Siqi and Fu, Zheyu and Dai, Zhongdongming and Qiao, Aurick and Zhang, Hao},
+  journal={arXiv preprint arXiv:2412.20993},
+  year={2024}
+}
+```
