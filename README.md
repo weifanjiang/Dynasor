@@ -43,16 +43,18 @@ Simple extension on vLLM to help you speed up reasoning model without training.
 
 Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a> for a quick try!
 
-Use Dynasor with vLLM:
+Use Dynasor:
 ```bash
-# Install vllm and dynasor
-pip install vllm dynasor
+# Install Dynasor
+git clone https://github.com/hao-ai-lab/Dynasor.git 
+cd Dynasor && pip install . && cd -
 
-# Setup a vLLM server
+# (Optional) Install and setup vllm endpoint
+pip install vllm
 vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
 
-# Start Dynasor Chat
-dynasor-chat
+# Start Dynasor Chat with an endpoint
+dynasor-chat --base-url http://localhost:8000/v1
 ```
 
 
@@ -65,11 +67,11 @@ Dynasor is a tool that helps you speed up LLM reasoning model without training o
 ## Installation
 
 
-### Install via pip
+### Install via source
 ```bash
-pip install vllm dynasor
+git clone https://github.com/hao-ai-lab/Dynasor.git
+cd Dynasor && pip install . && cd -
 ```
-
 
 
 ## How to use Dynasor
