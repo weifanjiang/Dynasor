@@ -38,6 +38,11 @@ Simple extension on vLLM to help you speed up reasoning model without training.
   - [dynasor-vllm: vLLM Native Server](#dynasor-vllm-vllm-native-server)
 
 
+<div align="center">
+    <img src="assets/demo.gif" alt="Dynasor Demo">
+</div>
+
+
 
 ## Quick Start 
 
