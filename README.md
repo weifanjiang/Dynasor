@@ -1,7 +1,6 @@
 
 # Dynasor
 
-Simple extension on vLLM to help you speed up reasoning model without training.
 
 <!-- https://hao-ai-lab.github.io/blogs/dynasor-cot/ -->
 <!-- <div align="center" style="line-height: 1;">
@@ -19,19 +18,32 @@ Simple extension on vLLM to help you speed up reasoning model without training.
     </a>
 </div> -->
 
-<div align="center" style="line-height: 1;">
+<div align="center" style="line-height: 1; margin-bottom: 12px;">
     | <a href="https://hao-ai-lab.github.io/blogs/dynasor-cot/">📝 Blog</a> 
     | <a href="https://arxiv.org/abs/2412.20993">📄 Paper</a> 
-    | <a href="https://viol2000.github.io/SubDomain/gradio-2.html">🤖 Demo</a> 
+    | <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a> 
     | <a href="https://x.com/haoailab">🐦 Twitter/X</a> 
     |
 </div>
 
 
+Simple extension on vLLM to help you speed up reasoning model without training.
+
+
+- [Quick Start](#quick-start)
+- [What is Dynasor](#what-is-dynasor)
+- [How to use Dynasor](#how-to-use-dynasor)
+  - [dynasor-chat: CLI Chat Interface](#dynasor-chat-cli-chat-interface)
+  - [dynasor-openai: OpenAI Compatible Server](#dynasor-openai-openai-compatible-server)
+  - [dynasor-vllm: vLLM Native Server](#dynasor-vllm-vllm-native-server)
+
 
 
 ## Quick Start 
 
+Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a> for a quick try!
+
+Use Dynasor with vLLM:
 ```bash
 # Install vllm and dynasor
 pip install vllm dynasor
@@ -44,12 +56,20 @@ dynasor-chat
 ```
 
 
-### How it works
+## What is Dynasor?
 
-Dynasor uses a combination of techniques to speed up LLM reasoning:
+Dynasor is a tool that helps you speed up LLM reasoning model without training or finetuning. It uses a combination of techniques to improve the prompt, and dynamically execute the prompt, and stop when the LLM has enough information to make a decision. 
 
-1. **Prompt Engineering**: We use a combination of techniques to improve the prompt.
-2. **Dynamic Execution**: We dynamically execute the prompt, and stop when the LLM has enough information to make a decision.
+
+
+## Installation
+
+
+### Install via pip
+```bash
+pip install vllm dynasor
+```
+
 
 
 ## How to use Dynasor
@@ -59,6 +79,9 @@ We provide 3 tools to launch Dynasor:
 1. [`dynasor-chat`](#dynasor-chat-cli-chat-interface): CLI chat interface to interact with Dynasor
 2. [`dynasor-openai`](#dynasor-openai-openai-compatible-server): OpenAI compatible server.
 3. [`dynasor-vllm`](#dynasor-vllm-vllm-native-server): vLLM-native server
+
+
+
 
 
 ### `dynasor-chat`: CLI Chat Interface

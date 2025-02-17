@@ -7,6 +7,8 @@ name = "dynasor"
 version = "0.0.1"
 description = "Dynasor is a Python library for speedup LLM reasoning"
 readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
 authors = [
   { name = "Dynasor Team" },
 ]
@@ -52,3 +54,7 @@ exclude = '''
   | dist
 )/
 '''
+
+[project.urls]
+Homepage = "https://github.com/hao-ai-lab/Dynasor"
+Issues = "https://github.com/hao-ai-lab/Dynasor/issues"
