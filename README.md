@@ -42,7 +42,7 @@ Simple extension on vLLM to help you speed up reasoning model without training.
 Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a>!
 
 <div align="center">
-    <img src="assets/demo.gif" alt="Dynasor Demo" width="450px">
+    <img src="assets/demo.gif" alt="Dynasor Demo" width="600px">
 </div>
 
 
@@ -110,13 +110,6 @@ vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
 dynasor-chat
 ```
 
-Then you should be entering the Dynasor Chat interface.
-```bash
-> : The point $(a, b)$ lies on the line with the equation $3x + 2y = 12.$ When $a = 4$, what is the value of $b$?
-# ... wait for the answer ...
-**Final Answer:**
-[ \boxed{0} \]
-```
 
 
 ### `dynasor-openai` OpenAI Compatible Server
