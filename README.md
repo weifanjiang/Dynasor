@@ -37,16 +37,18 @@ Simple extension on vLLM to help you speed up reasoning model without training.
   - [dynasor-openai: OpenAI Compatible Server](#dynasor-openai-openai-compatible-server)
   - [dynasor-vllm: vLLM Native Server](#dynasor-vllm-vllm-native-server)
 
+---
+
+Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a>!
 
 <div align="center">
-    <img src="assets/demo.gif" alt="Dynasor Demo">
+    <img src="assets/demo.gif" alt="Dynasor Demo" style="max-width: 350px;">
 </div>
 
 
 
 ## Quick Start 
 
-Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a> for a quick try!
 
 Use Dynasor:
 ```bash
