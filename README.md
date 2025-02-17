@@ -42,7 +42,7 @@ Simple extension on vLLM to help you speed up reasoning model without training.
 Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a>!
 
 <div align="center">
-    <img src="assets/demo.gif" alt="Dynasor Demo" style="max-width: 450px;">
+    <img src="assets/demo.gif" alt="Dynasor Demo" width="450px">
 </div>
 
 
