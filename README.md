@@ -20,6 +20,13 @@ Dynasor uses a combination of techniques to speed up LLM reasoning:
 
 # Launch
 
+We provide 3 tools to launch Dynasor:
+
+1. [`dynasor-chat`](#dynasor-chat-cli-chat-interface): CLI Chat Interface, a CLI tool to easily chat with Dynasor
+2. [`dynasor-openai`](#dynasor-openai-openai-compatible-server): OpenAI Compatible Server / Client, an example to use Dynasor with OpenAI API
+3. [`dynasor-vllm`](#dynasor-vllm-vllm-native-server): vLLM-native Server that integrates Dynasor as a part of the vLLM OpenAI compatible server endpoint.
+
+
 ## `dynasor-chat`: CLI Chat Interface
 
 > [!WARNING]
