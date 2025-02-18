@@ -3,6 +3,15 @@
 import argparse
 from openai import OpenAI
 
+import logging
+
+def init_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    return logger
+
+logger = init_logger()
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="OpenAI Chat Client")
@@ -26,6 +35,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    logger.debug("Args: %s", args)
 
     stream = args.stream
 
@@ -35,8 +45,10 @@ def main():
         max_retries=1,
     )
 
+    logger.debug("Grab models")
     models = client.models.list()
     model = models.data[0].id
+    logger.debug("Model: %s", model)
 
     response = client.chat.completions.create(
         messages=[
@@ -49,6 +61,10 @@ def main():
         stream=stream,
     )
 
+    
+    print("Prompt: ", args.prompt)
+    print("-" * 10)
+    print("Response: \n")
     if not stream:
         print(response.choices[0].message.content)
         return

@@ -11,8 +11,19 @@ from pydantic import BaseModel
 
 from dynasor.core.cot import effort_level
 from dynasor.core.cot import openai_chat_completion_stream
+from dynasor.cli.utils import with_cancellation
+from fastapi import Request
 
+import logging
+import time
+import asyncio
 
+def init_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    return logger
+
+logger = init_logger()
 
 
 class DynasorOpenAIClient:
@@ -68,8 +79,10 @@ class ChatCompletionRequest(BaseModel):
 
 @app.get("/v1/models")
 async def models():
-    client = DynasorOpenAIClient()
+    logger.debug("Reaching models models fetching")
+    global client
     models = client.client.models.list()
+    logger.debug("Models: %s", models)
     return models
 
 
@@ -109,10 +122,88 @@ def format_history(messages: List[ChatMessage]) -> str:
     return result
 
 
+# # TODO: asyncio cancellation is not working properly.
+# @app.post("/v1/chat/completions")
+# @with_cancellation
+# async def chat_completions(request: ChatCompletionRequest, raw_request: Request):
+#     """Handle chat completion requests."""
+#     global client
+#     openai_client = client.client
+#     messages = request.messages
+#     prompt = format_history(messages)
+#     stream = request.stream
+
+#     # Check for extra body parameters
+#     dynasor_saving_effort = client.dynasor_saving_effort
+#     if hasattr(request, "extra_body") and request.extra_body:
+#         if "dynasor" in request.extra_body:
+#             dynasor_config = request.extra_body["dynasor"]
+#             if "saving_effort" in dynasor_config:
+#                 dynasor_saving_effort = effort_level(dynasor_config["saving_effort"])
+
+#     generator = openai_chat_completion_stream(
+#         client=openai_client,
+#         model=request.model,
+#         prompt=prompt,
+#         temperature=request.temperature,
+#         max_tokens=request.max_tokens,
+#         dynasor_saving_effort=dynasor_saving_effort,
+#         probeing_suffix=client.probe,
+#     )
+#     if not stream:
+#         result = ""
+#         for i in generator:
+#             result += i
+#             logger.debug(result)
+#         return JSONResponse(content={"choices": [{"message": {"content": result}}]})
+#     else:
+#         import time
+
+#         async def stream_response():
+#             request_id = f"chatcmpl-{int(time.time())}"
+#             created_time = int(time.time())
+
+#             # Send the role first
+#             first_chunk = {
+#                 "id": request_id,
+#                 "object": "chat.completion.chunk",
+#                 "created": created_time,
+#                 "model": request.model,
+#                 "choices": [
+#                     {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
+#                 ],
+#             }
+#             logger.debug("yielding first chunk")
+#             yield f"data: {json.dumps(first_chunk)}\n\n"
+
+#             # Stream the content
+#             for content in generator:
+#                 logger.debug("yielding content", content)
+#                 chunk = {
+#                     "id": request_id,
+#                     "object": "chat.completion.chunk",
+#                     "created": created_time,
+#                     "model": request.model,
+#                     "choices": [
+#                         {
+#                             "index": 0,
+#                             "delta": {"content": content},
+#                             "finish_reason": None,
+#                         }
+#                     ],
+#                 }
+#                 yield f"data: {json.dumps(chunk)}\n\n"
+
+#             # Send the final [DONE] message
+#             yield "data: [DONE]\n\n"
+
+#         return StreamingResponse(stream_response(), media_type="text/event-stream")
+
 @app.post("/v1/chat/completions")
-async def chat_completions(request: ChatCompletionRequest):
-    """Handle chat completion requests."""
-    client = DynasorOpenAIClient()
+@with_cancellation
+async def chat_completions(request: ChatCompletionRequest, raw_request: Request):
+    """Handle chat completion requests with proper cancellation support."""
+    global client
     openai_client = client.client
     messages = request.messages
     prompt = format_history(messages)
@@ -126,6 +217,7 @@ async def chat_completions(request: ChatCompletionRequest):
             if "saving_effort" in dynasor_config:
                 dynasor_saving_effort = effort_level(dynasor_config["saving_effort"])
 
+    # Get the generator (assumed synchronous for now)
     generator = openai_chat_completion_stream(
         client=openai_client,
         model=request.model,
@@ -135,15 +227,31 @@ async def chat_completions(request: ChatCompletionRequest):
         dynasor_saving_effort=dynasor_saving_effort,
         probeing_suffix=client.probe,
     )
-    if not stream:
-        result = ""
-        for i in generator:
-            result += i
-            print(result)
-        return JSONResponse(content={"choices": [{"message": {"content": result}}]})
-    else:
-        import time
 
+    if not stream:
+        # Non-streaming case: Collect response asynchronously
+        result = ""
+        async def collect_response():
+            nonlocal result
+            # Wrap synchronous generator into async
+            for chunk in generator:
+                if asyncio.current_task().cancelled():
+                    logger.debug("Non-streaming task cancelled")
+                    return
+                result += chunk
+                # FIXME (GindaChen-Performance) Potentially some performance issue here...
+                await asyncio.sleep(0)  # Yield control for cancellation
+            logger.debug("Non-streaming response collected")
+
+        await collect_response()
+        if result:
+            return JSONResponse(content={"choices": [{"message": {"content": result}}]})
+        else:
+            logger.debug("Non-streaming cancelled, returning None")
+            return None
+
+    else:
+        # Streaming case: Return a StreamingResponse with async generator
         async def stream_response():
             request_id = f"chatcmpl-{int(time.time())}"
             created_time = int(time.time())
@@ -158,12 +266,22 @@ async def chat_completions(request: ChatCompletionRequest):
                     {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
                 ],
             }
-            print("yielding first chunk")
+            logger.debug("Yielding first chunk")
             yield f"data: {json.dumps(first_chunk)}\n\n"
 
+            # Wrap synchronous generator into async for streaming
+            async def async_generator():
+                for content in generator:
+                    if asyncio.current_task().cancelled():
+                        logger.debug("Stream generator cancelled")
+                        return
+                    yield content
+                    # FIXME (GindaChen-Performance) Potentially some performance issue here...
+                    await asyncio.sleep(0)  # Yield control for cancellation
+
             # Stream the content
-            for content in generator:
-                print("yielding content", content)
+            async for content in async_generator():
+                logger.debug(f"Streaming content: {content}")
                 chunk = {
                     "id": request_id,
                     "object": "chat.completion.chunk",
@@ -180,6 +298,7 @@ async def chat_completions(request: ChatCompletionRequest):
                 yield f"data: {json.dumps(chunk)}\n\n"
 
             # Send the final [DONE] message
+            logger.debug("Streaming complete")
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(stream_response(), media_type="text/event-stream")
@@ -238,6 +357,7 @@ def main():
         probe=args.probe,
         dynasor_saving_effort=dynasor_saving_effort,
     )
+    print(args)
     uvicorn.run(app, host=args.host, port=args.port)
 
 
