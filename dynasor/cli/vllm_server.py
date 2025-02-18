@@ -1069,8 +1069,7 @@ async def run_server(args, **uvicorn_kwargs) -> None:
     sock.close()
 
 
-if __name__ == "__main__":
-    # NOTE(simon):
+def main():
     # This section should be in sync with vllm/scripts.py for CLI entrypoints.
     parser = FlexibleArgumentParser(
         description="vLLM OpenAI-Compatible RESTful API server."
@@ -1080,3 +1079,6 @@ if __name__ == "__main__":
     validate_parsed_serve_args(args)
 
     uvloop.run(run_server(args))
+
+if __name__ == "__main__":
+    main()

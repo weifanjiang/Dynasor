@@ -140,7 +140,7 @@ We build Dynasor on top of vLLM as a part of the vLLM OpenAI compatible server e
 
 1. Setup a dynasor-vllm server
 ```bash
-dynasor-vllm serve deepseek-ai/DeepSeek-R1-Distill-Qwen-7B -tp 1 --enable-prefix-caching
+dynasor-vllm --model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B --enable-prefix-caching
 ```
 
 2. Use our simple client script to query:
