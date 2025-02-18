@@ -166,7 +166,7 @@ class OpenAIChatClient:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OpenAI Chat Client")
+    parser = argparse.ArgumentParser(description="Dynasor Chat Client")
     parser.add_argument("--api-key", type=str, default="token-abc123", help="API key")
     parser.add_argument(
         "--model",

@@ -1,3 +1,4 @@
+import argparse
 import json
 from typing import List, Optional
 
@@ -12,7 +13,6 @@ from dynasor.core.cot import effort_level
 from dynasor.core.cot import openai_chat_completion_stream
 
 
-# import vllm.entrypoints.openai.api_server
 
 
 class DynasorOpenAIClient:
@@ -40,6 +40,7 @@ class DynasorOpenAIClient:
 
 
 app = FastAPI()
+client: Optional[DynasorOpenAIClient] = None
 
 # Add CORS middleware
 app.add_middleware(
@@ -185,7 +186,59 @@ async def chat_completions(request: ChatCompletionRequest):
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    parser = argparse.ArgumentParser(description="OpenAI Chat Client")
+    parser.add_argument("--api-key", type=str, default="token-abc123", help="API key")
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default="http://localhost:8000/v1",
+        help="Base URL (default: http://localhost:8000/v1)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+        help="Model name (default: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8001,
+        help="Port (default: 8001)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--probe",
+        type=str,
+        default="... Oh, I suddenly got the answer to the whole problem, **Final Answer**\n\n\\[ \\boxed{",
+        help="Probe (default: ... Oh, I suddenly got the answer to the whole problem, **Final Answer**\n\n\\[ \\boxed{",
+    )
+    parser.add_argument(
+        "--dynasor-saving-effort",
+        type=str,
+        default="2,32",
+        help="Dynasor saving effort. It is a tuple of two integers. The first integer is the number of consistent answer to get before early exit, and the second integer is the number of tokens before probing. (default: 2,32)",
+    )
+    args = parser.parse_args()
+    global client
+
+    dynasor_saving_effort = tuple(map(int, args.dynasor_saving_effort.split(",")))
+    assert len(dynasor_saving_effort) == 2
+    assert dynasor_saving_effort[0] >= 0
+    assert dynasor_saving_effort[1] >= 0
+    client = DynasorOpenAIClient(
+        model=args.model,
+        base_url=args.base_url,
+        api_key=args.api_key,
+        probe=args.probe,
+        dynasor_saving_effort=dynasor_saving_effort,
+    )
+    uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
