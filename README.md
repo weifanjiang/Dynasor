@@ -1,6 +1,6 @@
 
 <div align="center">
-    <h1>Dynasor🦖: Efficiently Serving LLM Reasoning <br> Programs with Certaindex</h1>
+    <h1>Dynasor🦖: Efficiently Serving LLM Reasoning Programs with Certaindex</h1>
 </div>
 
 <!-- https://hao-ai-lab.github.io/blogs/dynasor-cot/ -->
