@@ -430,15 +430,16 @@ async def handle_adaptive_compute(request: CompletionRequest, raw_request: Reque
         request.adaptive_compute = None
 
         generator = await handler.create_completion(request, raw_request)
+        if isinstance(generator, ErrorResponse):
+            error_response = generator.model_dump()
+            logger.error(f"Error response from handler: {error_response}")
+            yield f"data: {error_response}\n\n"
+            yield f"data: [DONE]\n\n"
+            return
 
         # Send the actual query
         output_text = ""
         async for output in generator:
-            # """
-            # output = id='cmpl-25460fee3c2848a2a0da5744b1f7ecf3' object='text_completion' created=1739733716 model='deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B' choices=[CompletionResponseStreamChoice(index=0, text="'s", logprobs=None, finish_reason=None, stop_reason=None)] usage=None
-            # """
-            # print(f"normal_output = {output}")
-            # print(f"{type(output) = }")
             token = output.choices[0].text
             output_text += token
             remaining_tokens -= 1
@@ -479,7 +480,7 @@ async def handle_adaptive_compute(request: CompletionRequest, raw_request: Reque
         if should_early_exit(
             answers, output_text, uncertain_words, certainty_window, is_certains
         ):
-            print(f"Early exit on answer: {answer = }")
+            logger.debug(f"Early exit on answer: {answer = }")
 
             response_obj = output_var_template.model_copy()
             response_obj.choices[0].text = probe_text + answer + probe_text_end
@@ -494,7 +495,7 @@ async def handle_adaptive_compute(request: CompletionRequest, raw_request: Reque
             break
 
         if remaining_tokens <= 0:
-            print(f"Early exit: Remaining tokens <= 0")
+            logger.debug(f"Early exit: Remaining tokens <= 0")
             yield f"data: [DONE]\n\n"
             break
 
