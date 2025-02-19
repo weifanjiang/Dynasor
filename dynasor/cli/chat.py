@@ -34,6 +34,26 @@ class OpenAIChatClient:
         self.conversation_history: List[Dict] = [
             {"role": "system", "content": "You are a helpful AI assistant."}
         ]
+        self.model = self.ensure_model_initialized()
+
+    def ensure_model_initialized(self):
+        # query the client to check if the model is available
+        try:
+            models = self.client.models.list()
+            model_ids = [model.id for model in models]
+            if not model_ids:
+                raise ValueError(
+                    f"No models found in the server side: {self.base_url}"
+                )
+            if self.model is None:
+                return model_ids[0]
+            if self.model not in model_ids:
+                raise ValueError(
+                    f"Model {self.model} not found in the server side: {self.base_url}"
+                )
+        except Exception as e:
+            print(f"[bold red]Error: {str(e)}[/bold red]")
+            sys.exit(1)
 
     def format_history(self, messages: List[Dict]) -> str:
         """
@@ -171,8 +191,8 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-        help="Model name (default: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B)",
+        default=None,
+        help="Model name (default: None)",
     )
     parser.add_argument(
         "--base-url",
@@ -188,17 +208,11 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.dynasor_saving_effort not in [
-        "none",
-        "mild",
-        "low",
-        "mid",
-        "high",
-        "crazy",
-        "",
-    ]:
+    dynasor_saving_effort_levels = ["none", "mild", "low", "mid", "high", "crazy", ""]
+    if args.dynasor_saving_effort not in dynasor_saving_effort_levels:
         print(
-            f"Error: Invalid Dynasor saving effort level. Must be one of: 'none', 'mild', 'low', 'mid', 'high', or 'crazy'"
+            f"Error: Invalid Dynasor saving effort level. "
+            f"Must be one of: {dynasor_saving_effort_levels}"
         )
         sys.exit(1)
 
