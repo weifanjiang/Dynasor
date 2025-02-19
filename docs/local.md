@@ -1,8 +1,6 @@
-# Local Deployment
+# Run Dynasor locally with ollama + OpenWebUI
 
 This tutorial shows how to deploy Dynasor locally with ollama and deepseek-r1.
-
-# Dynasor with ollama + deepseek-r1
 
 ## Install ollama
 
@@ -19,26 +17,37 @@ cd Dynasor
 pip install .
 ```
 
-## Run `dynasor-chat`
-
-We provide a command line tool `dynasor-chat` to interact with ollama via Dynasor.
-
-```bash
-dynasor-chat --base-url http://localhost:11434/v1 --model deepseek-r1
-```
-
 ## Run `dynasor-openai`
 
 We also provide a proxy server `dynasor-openai` for Dynasor that is compatible with any OpenAI API.
 
 ```bash
-dynasor-openai --base-url http://localhost:11434/v1 --model deepseek-r1 --port 28080
+dynasor-openai --base-url http://localhost:11434/v1 --model deepseek-r1 --port 8001
 ```
 
-Then run `dynasor-chat` with the base URL `http://localhost:28080/v1`.
+You can interact with the proxy server running `dynasor-chat` with the base URL `http://localhost:8001/v1`.
 
 ```bash
-dynasor-chat --base-url http://localhost:28080/v1
+dynasor-chat --base-url http://localhost:8001/v1
 ```
 
-or use our simple example:
+or simply run one of our example scripts to verify the proxy server is working:
+
+```bash
+python examples/client.py --prompt "2+2=?" --base-url http://localhost:8001/v1
+```
+
+## Use Dynasor with OpenWebUI
+
+Install [Open WebUI](https://github.com/open-webui/open-webui) and run the server
+```bash
+pip install open-webui
+open-webui serve
+```
+
+Then follow this instruction to [add a custom API](https://docs.openwebui.com/tutorials/integrations/amazon-bedrock#step-3-add-connection-in-open-webui) to Open WebUI.
+- URL: `http://localhost:8001/v1` (the base URL of the proxy server)
+- Key: `EMPTY` (optional)
+- Prefix ID: `dynasor` (optional)
+
+

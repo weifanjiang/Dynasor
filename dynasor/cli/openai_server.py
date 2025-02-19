@@ -26,6 +26,7 @@ def init_logger():
 logger = init_logger()
 
 
+
 class DynasorOpenAIClient:
     # The Dynasor OpenAI Client is a wrapper that applys the chat template
     # and the reasoning stuff to the OpenAI API of vLLM.
@@ -45,10 +46,22 @@ class DynasorOpenAIClient:
             model: The model name to use (default: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B).
         """
         self.client = OpenAI(api_key=api_key, base_url=base_url)
-        self.model = model
         self.probe = probe
         self.dynasor_saving_effort = dynasor_saving_effort
+        
+        model, model_info = self.ensure_model_initialized(model)
+        self.model = model
+        self.model_info = model_info
 
+        # FIXME: Need a reliable way to get the max tokens (without using transformers)
+        self.max_tokens = 131072
+
+    def ensure_model_initialized(self, model: str):
+        # Query the openai client to get the model information
+        model_dict = self.client.models.retrieve(model)
+        return model, model_dict
+        
+        
 
 app = FastAPI()
 client: Optional[DynasorOpenAIClient] = None
@@ -68,6 +81,13 @@ class ChatMessage(BaseModel):
     role: str
     content: str
 
+
+class CompletionRequest(BaseModel):
+    model: str
+    prompt: str
+    temperature: Optional[float] = 0.7
+    max_tokens: Optional[int] = None
+    stream: Optional[bool] = False
 
 class ChatCompletionRequest(BaseModel):
     model: str
@@ -122,6 +142,86 @@ def format_history(messages: List[ChatMessage]) -> str:
     return result
 
 
+@app.post("/v1/completions")
+@with_cancellation
+async def completions(request: CompletionRequest, raw_request: Request):
+    """Handle chat completion requests."""
+    global client
+    openai_client = client.client
+    prompt = request.prompt
+    stream = request.stream
+
+    # Check for extra body parameters
+    dynasor_saving_effort = client.dynasor_saving_effort
+    if hasattr(request, "extra_body") and request.extra_body:
+        if "dynasor" in request.extra_body:
+            dynasor_config = request.extra_body["dynasor"]
+            if "saving_effort" in dynasor_config:
+                dynasor_saving_effort = effort_level(dynasor_config["saving_effort"])
+
+    max_tokens = request.max_tokens
+    if max_tokens is None:
+        max_tokens = client.max_tokens
+
+    generator = openai_chat_completion_stream(
+        client=openai_client,
+        model=request.model,
+        prompt=prompt,
+        temperature=request.temperature,
+        max_tokens=max_tokens,
+        dynasor_saving_effort=dynasor_saving_effort,
+        probeing_suffix=client.probe,
+    )
+    if not stream:
+        result = ""
+        for i in generator:
+            result += i
+            logger.debug(result)
+        return JSONResponse(content={"choices": [{"message": {"content": result}}]})
+    else:
+        import time
+
+        async def stream_response():
+            request_id = f"chatcmpl-{int(time.time())}"
+            created_time = int(time.time())
+
+            # Send the role first
+            first_chunk = {
+                "id": request_id,
+                "object": "chat.completion.chunk",
+                "created": created_time,
+                "model": request.model,
+                "choices": [
+                    {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
+                ],
+            }
+            logger.debug("yielding first chunk")
+            yield f"data: {json.dumps(first_chunk)}\n\n"
+
+            # Stream the content
+            for content in generator:
+                logger.debug("yielding content", content)
+                chunk = {
+                    "id": request_id,
+                    "object": "chat.completion.chunk",
+                    "created": created_time,
+                    "model": request.model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": content},
+                            "finish_reason": None,
+                        }
+                    ],
+                }
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+            # Send the final [DONE] message
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(stream_response(), media_type="text/event-stream")
+
+
 # TODO: asyncio cancellation is not working properly.
 @app.post("/v1/chat/completions")
 @with_cancellation
@@ -141,12 +241,16 @@ async def chat_completions(request: ChatCompletionRequest, raw_request: Request)
             if "saving_effort" in dynasor_config:
                 dynasor_saving_effort = effort_level(dynasor_config["saving_effort"])
 
+    max_tokens = request.max_tokens
+    if max_tokens is None:
+        max_tokens = client.max_tokens
+
     generator = openai_chat_completion_stream(
         client=openai_client,
         model=request.model,
         prompt=prompt,
         temperature=request.temperature,
-        max_tokens=request.max_tokens,
+        max_tokens=max_tokens,
         dynasor_saving_effort=dynasor_saving_effort,
         probeing_suffix=client.probe,
     )

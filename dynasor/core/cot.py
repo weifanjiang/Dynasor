@@ -43,6 +43,9 @@ def openai_chat_completion_stream(
     probeing_suffix: str = "... Oh, I suddenly got the answer to the whole problem, **Final Answer**\n\n\\[ \\boxed{",
 ):
     print("dynasor_saving_effort:", dynasor_saving_effort)
+
+    assert max_tokens is not None, "max_tokens must be provided"
+    
     if dynasor_saving_effort is not None:
         threshold, chunk_size = dynasor_saving_effort
         accumulated_response = ""

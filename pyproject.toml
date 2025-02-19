@@ -19,6 +19,7 @@ dependencies = [
   "pydantic",
   "datasets",
   "tqdm",
+  "transformers",
 ]
 classifiers = [
   "Programming Language :: Python :: 3",

@@ -50,6 +50,8 @@ Try our <a href="https://e4d417385887b7e801.gradio.live/">🤖 Demo</a>!
 
 ## Quick Start 
 
+- [Run Dynasor locally](./docs/local.md)
+
 
 Use Dynasor:
 ```bash
