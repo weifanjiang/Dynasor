@@ -20,6 +20,8 @@ dependencies = [
   "datasets",
   "tqdm",
   "transformers",
+  "latex2sympy2",
+  "word2number",
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
