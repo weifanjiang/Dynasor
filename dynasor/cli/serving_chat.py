@@ -35,6 +35,13 @@ from vllm.sequence import Logprob
 from vllm.transformers_utils.tokenizer import AnyTokenizer, MistralTokenizer
 from vllm.transformers_utils.tokenizers import (maybe_serialize_tool_calls,
                                                 truncate_tool_call_ids)
+from vllm.entrypoints.chat_utils import (ChatCompletionMessageParam,
+                                         ChatTemplateContentFormatOption,
+                                         ConversationMessage,
+                                         apply_hf_chat_template,
+                                         apply_mistral_chat_template,
+                                         parse_chat_messages_futures,
+                                         resolve_chat_template_content_format)
 
 logger = init_logger(__name__)
 
