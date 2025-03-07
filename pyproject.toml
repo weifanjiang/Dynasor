@@ -34,6 +34,7 @@ dynasor-vllm = "dynasor.cli.vllm_server:main"
 dynasor = "dynasor.cli.vllm_server:main"
 dynasor-openai = "dynasor.cli.openai_server:main"
 dynasor-chat = "dynasor.cli.chat:main"
+dynasor-sglang = "dynasor.cli.sglang_server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
